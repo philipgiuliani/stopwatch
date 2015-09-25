@@ -17,7 +17,7 @@ void setup() {
   pinMode(ledPinStop, OUTPUT);
 }
 
-void loop() { 
+void loop() {
   // start to count
   if(countDownRunning == false) {
     lastRoundTime = millis();
@@ -44,7 +44,7 @@ void loop() {
       digitalWrite(ledPinReady, LOW);
       digitalWrite(ledPinStop, HIGH);
       
-      Serial.println("Countdown started");
+      Serial.println("Round #1 started");
     }
     else if (currentTime - lastRoundTime >= threshold) {
       Serial.print("Round #");
