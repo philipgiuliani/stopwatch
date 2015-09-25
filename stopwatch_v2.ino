@@ -1,6 +1,7 @@
 unsigned int sensorPin = 7;
 unsigned int resetPin = 8;
-unsigned int ledPin = 13;
+unsigned int ledPinReady = 6;
+unsigned int ledPinStop = 5;
 unsigned int threshold = 1000;
 
 unsigned long lastRoundTime = 0;
@@ -9,8 +10,11 @@ boolean countDownRunning = false;
 
 void setup() {
   Serial.begin(9600);
+  
   pinMode(sensorPin, INPUT);
-  pinMode(ledPin, OUTPUT);
+  pinMode(resetPin, INPUT);
+  pinMode(ledPinReady, OUTPUT);
+  pinMode(ledPinStop, OUTPUT);
 }
 
 void loop() { 
@@ -19,10 +23,18 @@ void loop() {
     lastRoundTime = millis();
     countDownRunning = true;
     delay(1000);
+    
+    digitalWrite(ledPinStop, LOW);
+    digitalWrite(ledPinReady, HIGH);
+  }
+
+  if(currentRound > 0 && countDownRunning == true) {
+    digitalWrite(ledPinReady, LOW);
+    digitalWrite(ledPinStop, HIGH);
   }
 
   // check for reset
-  if(currentRound == 0 && digitalRead(resetPin) == HIGH) {
+  if(currentRound > 0 && digitalRead(resetPin) == HIGH) {
     reset();
   }
 
