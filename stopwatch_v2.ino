@@ -28,11 +28,6 @@ void loop() {
     digitalWrite(ledPinReady, HIGH);
   }
 
-  if(currentRound > 0 && countDownRunning == true) {
-    digitalWrite(ledPinReady, LOW);
-    digitalWrite(ledPinStop, HIGH);
-  }
-
   // check for reset
   if(currentRound > 0 && digitalRead(resetPin) == HIGH) {
     reset();
@@ -45,6 +40,9 @@ void loop() {
     if(currentRound == 0) {
       lastRoundTime = currentTime;
       currentRound = 1;
+      
+      digitalWrite(ledPinReady, LOW);
+      digitalWrite(ledPinStop, HIGH);
       
       Serial.println("Countdown started");
     }
