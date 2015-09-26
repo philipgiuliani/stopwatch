@@ -1,9 +1,15 @@
-unsigned int sensorPin = 7;
-unsigned int resetPin = 8;
+// pins
+unsigned int sensorPin = 8;
+unsigned int checkpointPins[] = { 8, 9, 10, 11, 12 };
+
+unsigned int resetPin = 7;
 unsigned int ledPinReady = 6;
 unsigned int ledPinStop = 5;
+
+// settings
 unsigned int threshold = 1000;
 
+// DONT CHANGE!
 unsigned long lastRoundTime = 0;
 unsigned int currentRound = 0;
 boolean countDownRunning = false;
@@ -18,10 +24,22 @@ void setup() {
 }
 
 void loop() {
+  // read bluetooth input
+  if(Serial.available() > 0) {
+     String input = Serial.readStringUntil('\n');
+     if(input == "reset") {
+       reset();
+     }
+  }
+  
   // start to count
   if(countDownRunning == false) {
-    lastRoundTime = millis();
+    digitalWrite(ledPinStop, HIGH);
+    digitalWrite(ledPinReady, LOW);
+    
+    readCheckPoints();
     countDownRunning = true;
+
     delay(1000);
     
     digitalWrite(ledPinStop, LOW);
@@ -29,12 +47,12 @@ void loop() {
   }
 
   // check for reset
-  if(currentRound > 0 && digitalRead(resetPin) == HIGH) {
+  if(digitalRead(resetPin) == HIGH) {
     reset();
   }
 
   // check for round
-  if(countDownRunning && digitalRead(sensorPin) == HIGH) {
+  if(countDownRunning && digitalRead(sensorPin) == LOW) {
     unsigned long currentTime = millis();
 
     if(currentRound == 0) {
@@ -64,3 +82,21 @@ void reset() {
   countDownRunning = false;
   Serial.println("Countdown resetted");
 }
+
+void readCheckPoints() {
+  int sensorCount = 0;
+  
+  for (int i = 0; i < sizeof(checkpointPins) / sizeof(int); i = i + 1) {
+    if(digitalRead(checkpointPins[i]) == HIGH) {
+      Serial.print("Sensor at pin #");
+      Serial.print(checkpointPins[i]);
+      Serial.println(" detected.");
+
+      sensorCount = sensorCount + 1;
+    }
+  }
+
+  Serial.print(sensorCount);
+  Serial.println(" sensors has been detected.");
+}
+
