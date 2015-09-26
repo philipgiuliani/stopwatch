@@ -1,18 +1,19 @@
 // pins
-unsigned int sensorPin = 8;
-unsigned int checkpointPins[] = { 8, 9, 10, 11, 12 };
+int sensorPin = 8;
+int checkPointPins[] = { 8, 9, 10, 11, 12 };
 
-unsigned int resetPin = 7;
-unsigned int ledPinReady = 6;
-unsigned int ledPinStop = 5;
+int resetPin = 7;
+int ledPinReady = 6;
+int ledPinStop = 5;
 
 // settings
-unsigned int threshold = 1000;
+int threshold = 1000;
 
 // DONT CHANGE!
 unsigned long lastRoundTime = 0;
 unsigned int currentRound = 0;
 boolean countDownRunning = false;
+unsigned long currentTime;
 
 void setup() {
   Serial.begin(9600);
@@ -53,7 +54,7 @@ void loop() {
 
   // check for round
   if(countDownRunning && digitalRead(sensorPin) == LOW) {
-    unsigned long currentTime = millis();
+    currentTime = millis();
 
     if(currentRound == 0) {
       lastRoundTime = currentTime;
@@ -86,10 +87,10 @@ void reset() {
 void readCheckPoints() {
   int sensorCount = 0;
   
-  for (int i = 0; i < sizeof(checkpointPins) / sizeof(int); i = i + 1) {
-    if(digitalRead(checkpointPins[i]) == HIGH) {
+  for (int i = 0; i < sizeof(checkPointPins) / sizeof(int); i = i + 1) {
+    if(digitalRead(checkPointPins[i]) == HIGH) {
       Serial.print("Sensor at pin #");
-      Serial.print(checkpointPins[i]);
+      Serial.print(checkPointPins[i]);
       Serial.println(" detected.");
 
       sensorCount = sensorCount + 1;
