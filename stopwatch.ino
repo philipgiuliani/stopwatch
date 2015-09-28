@@ -8,7 +8,7 @@ int ledPinReady = 6;
 int ledPinStop = 5;
 
 // settings
-int threshold = 1000;
+int threshold = 600;
 
 // DONT CHANGE!
 unsigned long lastRoundTime;
@@ -18,8 +18,11 @@ boolean countDownRunning = false;
 
 void setup() {
   Serial.begin(9600);
+
+  for(int i = 0; i < sizeof(checkPointPins) / sizeof(int); i++) {
+    pinMode(checkPointPins[i], INPUT);
+  }
   
-  pinMode(sensorPin, INPUT);
   pinMode(resetPin, INPUT);
   pinMode(ledPinReady, OUTPUT);
   pinMode(ledPinStop, OUTPUT);
