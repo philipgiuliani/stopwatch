@@ -1,3 +1,8 @@
+#include <SoftwareSerial.h>
+
+// bluetooth initialization
+SoftwareSerial mySerial(2, 3); // tx, rx
+
 // pins
 int sensorPin = 8;
 int checkPointPins[] = { 8, 9, 10, 11, 12 };
@@ -17,8 +22,7 @@ unsigned long currentTime;
 boolean countDownRunning = false;
 
 void setup() {
-  Serial.begin(9600);
-
+  // set pins for the pumps
   for(int i = 0; i < sizeof(checkPointPins) / sizeof(int); i++) {
     pinMode(checkPointPins[i], INPUT);
   }
@@ -26,15 +30,59 @@ void setup() {
   pinMode(resetPin, INPUT);
   pinMode(ledPinReady, OUTPUT);
   pinMode(ledPinStop, OUTPUT);
+
+  // start serial
+  Serial.begin(9600);
+  while (!Serial) {
+    ; // wait for serial port to connect. Needed for native USB port only
+  }
+
+  // bluetooth
+  Serial.println("Starting config");
+  mySerial.begin(57600);
+  delay(1000);
+
+  // Should respond with OK
+  mySerial.print("AT");
+  waitForResponse();
+
+  // Should respond with its version
+  mySerial.print("AT+VERSION");
+  waitForResponse();
+
+  // Set pin to 0000
+  mySerial.print("AT+PIN0000");
+  waitForResponse();
+
+  // Set the name to ROBOT_NAME
+  mySerial.print("AT+NAME");
+  mySerial.print("Stoppuhr");
+  waitForResponse();
+
+  // Set baudrate to 57600
+  mySerial.print("AT+BAUD7");
+  waitForResponse();
+
+  Serial.println("Done!");
+}
+
+void waitForResponse() {
+    delay(1000);
+    while (mySerial.available()) {
+      Serial.write(mySerial.read());
+    }
+    Serial.write("\n");
 }
 
 void loop() {
   // read bluetooth input
-  if(Serial.available() > 0) {
-     String input = Serial.readStringUntil('\n');
-     if(input == "reset") {
-       reset();
-     }
+  if(mySerial.available() > 0) {
+    char input = mySerial.read();
+    // String input = mySerial.readStringUntil('\n');
+    // if(input == "reset") {
+    if(input == 'r') {
+      reset();
+    }
   }
   
   // start to count
@@ -63,7 +111,7 @@ void loop() {
   }
 
   // check for round
-  if(countDownRunning && digitalRead(sensorPin) == LOW) {
+  if(countDownRunning && digitalRead(sensorPin) == HIGH) {
     currentTime = millis();
 
     if(currentRound == 0) {
@@ -81,6 +129,8 @@ void loop() {
       Serial.print(" completed in ");
       Serial.print(currentTime - lastRoundTime);
       Serial.println("ms");
+
+      mySerial.print(currentTime - lastRoundTime);
       
       lastRoundTime = currentTime;
       currentRound += 1;
@@ -98,7 +148,7 @@ void readCheckPoints() {
   checkPointsConnected = 0;
   
   for (int i = 0; i < sizeof(checkPointPins) / sizeof(int); i++) {
-    if(digitalRead(checkPointPins[i]) == HIGH) {
+    if(digitalRead(checkPointPins[i]) == LOW) {
       checkPointsConnected += 1;
     }
   }
