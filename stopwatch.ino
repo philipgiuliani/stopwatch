@@ -1,28 +1,30 @@
 #include <SoftwareSerial.h>
 
-// bluetooth initialization
 SoftwareSerial mySerial(2, 3); // tx, rx
 
-// pins
+// Pins
 int sensorPin = 8;
 int checkPointPins[] = { 8, 9, 10, 11, 12 };
-int checkPointsConnected = 0;
 
 int resetPin = 7;
 int ledPinReady = 6;
 int ledPinStop = 5;
 
-// settings
-int threshold = 600;
+// Settings
+const int TRESHOLD = 600;
+const boolean DEBUGGING = true;
+const byte BT_START = '>';
+const byte BT_SEPERATOR = ',';
+const byte BT_END = '\n';
 
 // DONT CHANGE!
+unsigned long startTime;
 unsigned long lastRoundTime;
-unsigned int currentRound;
 unsigned long currentTime;
 boolean countDownRunning = false;
 
 void setup() {
-  // set pins for the pumps
+  // set checkpoints as inputs
   for(int i = 0; i < sizeof(checkPointPins) / sizeof(int); i++) {
     pinMode(checkPointPins[i], INPUT);
   }
@@ -90,10 +92,9 @@ void loop() {
     digitalWrite(ledPinStop, HIGH);
     digitalWrite(ledPinReady, LOW);
     
-    readCheckPoints();
-    
     delay(500);
-
+    
+    int checkPointsConnected = discoverCheckPoints();
     if(checkPointsConnected > 0) {
       countDownRunning = true;
       digitalWrite(ledPinStop, LOW);
@@ -111,54 +112,84 @@ void loop() {
   }
 
   // check for round
-  if(countDownRunning && digitalRead(sensorPin) == HIGH) {
+  if(countDownRunning && digitalRead(sensorPin) == LOW) {
     currentTime = millis();
 
-    if(currentRound == 0) {
+    if(startTime == 0) {
+      startTime = currentTime;
       lastRoundTime = currentTime;
-      currentRound = 1;
       
       digitalWrite(ledPinReady, LOW);
       digitalWrite(ledPinStop, HIGH);
       
-      Serial.println("Round #1 started");
+      sendCheckPointPass(0, 0);
     }
-    else if (currentTime - lastRoundTime >= threshold) {
-      Serial.print("Round #");
-      Serial.print(currentRound);
-      Serial.print(" completed in ");
-      Serial.print(currentTime - lastRoundTime);
-      Serial.println("ms");
-
-      mySerial.print(currentTime - lastRoundTime);
-      
+    else if (currentTime - lastRoundTime >= TRESHOLD) {
+      sendCheckPointPass(0, startTime - currentTime);
       lastRoundTime = currentTime;
-      currentRound += 1;
     }
   }
 }
 
+// Returns how many checkpoints are connected
+int discoverCheckPoints() {
+  int checkPointsConnected = 0;
+  
+  for (int i = 0; i < sizeof(checkPointPins) / sizeof(int); i++) {
+    if(digitalRead(checkPointPins[i]) == HIGH) {
+      checkPointsConnected += 1;
+    }
+  }
+
+  sendCheckPointDiscover(checkPointsConnected);
+
+  return checkPointsConnected;
+}
+
+// Reset, and discover checkpoints
 void reset() {
   currentRound = 0;
   countDownRunning = false;
   Serial.println("Countdown resetted");
 }
 
-void readCheckPoints() {
-  checkPointsConnected = 0;
-  
-  for (int i = 0; i < sizeof(checkPointPins) / sizeof(int); i++) {
-    if(digitalRead(checkPointPins[i]) == LOW) {
-      checkPointsConnected += 1;
-    }
-  }
+//
+// BLUETOOTH
+//
 
-  if(checkPointsConnected > 0) {
-    Serial.print(checkPointsConnected);
-    Serial.println(" checkpoint(s) detected");
+// When checkpoints have been discovered.
+// Example: >discover,4\n
+void sendCheckPointDiscover(int checkPointCount) {
+  mySerial.write(BT_START);
+  mySerial.write("discover");
+  mySerial.write(BT_SEPERATOR);
+  mySerial.write(checkPointCount);
+  mySerial.write(BT_END);
+
+  if(DEBUGGING) {
+    Serial.print("Found ");
+    Serial.print(checkPointCount);
+    Serial.println("checkpoints");
   }
-  else {
-    Serial.println("No checkpoints detected..");
+}
+
+// When a checkpoint has been passed.
+// Example: >checkpoint,0,5000\n
+void sendCheckPointPass(int checkPointId, unsigned int passedTime) {
+  mySerial.write(BT_START);
+  mySerial.write("checkpoint");
+  mySerial.write(BT_SEPERATOR);
+  mySerial.write(checkPointId);
+  mySerial.write(BT_SEPERATOR);
+  mySerial.write(passedTime);
+  mySerial.write(BT_END);
+
+  if(DEBUGGING) {
+    Serial.print("Checkpoint #");
+    Serial.print(checkPointId);
+    Serial.print(" completed in ");
+    Serial.print(passedTime);
+    Serial.println("ms");
   }
 }
 
