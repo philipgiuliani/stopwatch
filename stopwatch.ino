@@ -3,12 +3,13 @@
 SoftwareSerial mySerial(2, 3); // tx, rx
 
 // Pins
-int sensorPin = 8;
-int checkPointPins[] = { 8, 9, 10, 11, 12 };
+short sensorPin = 8;
+short checkPointPins[] = { 8, 9, 10, 11, 12 };
+boolean *checkPointStatuses;
 
-int resetPin = 7;
-int ledPinReady = 6;
-int ledPinStop = 5;
+short resetPin = 7;
+short ledPinReady = 6;
+short ledPinStop = 5;
 
 // Settings
 const int TRESHOLD = 600;
@@ -18,10 +19,10 @@ const byte BT_SEPERATOR = ',';
 const byte BT_END = '\n';
 
 // DONT CHANGE!
+boolean countDownRunning = false;
 unsigned long startTime;
 unsigned long lastRoundTime;
 unsigned long currentTime;
-boolean countDownRunning = false;
 
 void setup() {
   // set checkpoints as inputs
@@ -86,6 +87,11 @@ void loop() {
       reset();
     }
   }
+
+  // check for reset
+  if(digitalRead(resetPin) == HIGH) {
+    reset();
+  }
   
   // start to count
   if(countDownRunning == false) {
@@ -105,13 +111,32 @@ void loop() {
       digitalWrite(ledPinReady, LOW);
     }
   }
+  // check for round
+  else {
+    for(int i = 0; i < 5; i++) {
+      if(checkPointStatuses[i] == 0) continue; // skip if the checkpoint is not connected
+      
+      if(digitalRead(checkPointPins[i]) == LOW) {
+        currentTime = millis();
 
-  // check for reset
-  if(digitalRead(resetPin) == HIGH) {
-    reset();
+        if(startTime == 0) {
+          startTime = currentTime;
+          lastRoundTime = currentTime;
+          
+          digitalWrite(ledPinReady, LOW);
+          digitalWrite(ledPinStop, HIGH);
+          
+          sendCheckPointPass(i, 0);
+        }
+        else if (currentTime - lastRoundTime >= TRESHOLD) {
+          sendCheckPointPass(i, currentTime - startTime);
+          lastRoundTime = currentTime;
+        }
+      }
+    }
   }
 
-  // check for round
+  /*
   if(countDownRunning && digitalRead(sensorPin) == LOW) {
     currentTime = millis();
 
@@ -129,28 +154,39 @@ void loop() {
       lastRoundTime = currentTime;
     }
   }
+  */
 }
 
 // Returns how many checkpoints are connected
 int discoverCheckPoints() {
-  int checkPointsConnected = 0;
+  boolean checkPointsStatusTemp[sizeof(checkPointPins) / sizeof(int)];
   
+  int checkPointsConnected = 0;
   for (int i = 0; i < sizeof(checkPointPins) / sizeof(int); i++) {
     if(digitalRead(checkPointPins[i]) == HIGH) {
+      checkPointsStatusTemp[i] = 1;
       checkPointsConnected += 1;
     }
+    else {
+      checkPointsStatusTemp[i] = 0;
+    }
   }
-
+  checkPointStatuses = checkPointsStatusTemp;
   sendCheckPointDiscover(checkPointsConnected);
-
+  
   return checkPointsConnected;
 }
 
 // Reset, and discover checkpoints
 void reset() {
-  currentRound = 0;
+  startTime = 0;
+  lastRoundTime = 0;
+  currentTime = 0;
   countDownRunning = false;
-  Serial.println("Countdown resetted");
+
+  if(DEBUGGING) {
+    Serial.println("Countdown resetted");
+  }
 }
 
 //
@@ -169,13 +205,14 @@ void sendCheckPointDiscover(int checkPointCount) {
   if(DEBUGGING) {
     Serial.print("Found ");
     Serial.print(checkPointCount);
-    Serial.println("checkpoints");
+    Serial.println(" checkpoints");
   }
 }
 
 // When a checkpoint has been passed.
 // Example: >checkpoint,0,5000\n
-void sendCheckPointPass(int checkPointId, unsigned int passedTime) {
+void sendCheckPointPass(int checkPointId, unsigned long passedTime) {
+  /*
   mySerial.write(BT_START);
   mySerial.write("checkpoint");
   mySerial.write(BT_SEPERATOR);
@@ -183,11 +220,12 @@ void sendCheckPointPass(int checkPointId, unsigned int passedTime) {
   mySerial.write(BT_SEPERATOR);
   mySerial.write(passedTime);
   mySerial.write(BT_END);
+  */
 
   if(DEBUGGING) {
     Serial.print("Checkpoint #");
     Serial.print(checkPointId);
-    Serial.print(" completed in ");
+    Serial.print(" passed at ");
     Serial.print(passedTime);
     Serial.println("ms");
   }
